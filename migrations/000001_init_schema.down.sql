@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS transactions;
+DROP TYPE IF EXISTS source_type;
+DROP TYPE IF EXISTS state;
+DROP EXTENSION IF EXISTS "uuid-ossp";
