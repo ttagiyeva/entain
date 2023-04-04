@@ -10,9 +10,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
-	"github.com/ttagiyeva/entain/internal/config"
-	"github.com/ttagiyeva/entain/internal/mocks"
+	"github.com/ttagiyeva/entain/internal/constants"
 	"github.com/ttagiyeva/entain/internal/model"
+	"github.com/ttagiyeva/entain/internal/transaction/mocks"
 	"go.uber.org/zap"
 )
 
@@ -107,7 +107,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/users/1/transactions", bytes.NewReader(tc.body))
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-			req.Header.Set(config.SourceType, "game")
+			req.Header.Set(constants.SourceType, "game")
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 

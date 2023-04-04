@@ -6,16 +6,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-const (
-	// Interval defines the interval for the job to post process transactions.
-	Interval   = 1
-	SourceType = "Source-Type"
-)
-
 // db represents a database configuration.
-type db struct {
+type DB struct {
 	Host     string
-	Port     string
+	Port     uint16
 	User     string
 	Password string
 	Name     string
@@ -30,7 +24,7 @@ type logger struct {
 // Config is the configuration for the application.
 type Config struct {
 	Logger logger
-	DB     db
+	DB     DB
 }
 
 // New returns a new Config.
@@ -46,9 +40,9 @@ func New() *Config {
 			Level:    confer.GetString("log.level"),
 			Encoding: confer.GetString("log.encoding"),
 		},
-		DB: db{
+		DB: DB{
 			Host:     confer.GetString("db.host"),
-			Port:     confer.GetString("db.port"),
+			Port:     confer.GetUint16("db.port"),
 			User:     confer.GetString("db.user"),
 			Password: confer.GetString("db.password"),
 			Name:     confer.GetString("db.name"),

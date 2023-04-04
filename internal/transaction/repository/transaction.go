@@ -2,23 +2,21 @@ package repository
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 
-	"github.com/ttagiyeva/entain/internal/domain"
-	"github.com/ttagiyeva/entain/internal/model"
-	"github.com/ttagiyeva/entain/internal/transaction"
+	"github.com/jmoiron/sqlx"
 	"go.uber.org/zap"
+
+	"github.com/ttagiyeva/entain/internal/model"
 )
 
 // Transaction is a structure which manages transaction repository.
 type Transaction struct {
 	log  *zap.SugaredLogger
-	conn *sql.DB
+	conn *sqlx.DB
 }
 
 // New returns a new Transaction object.
-func New(log *zap.SugaredLogger, conn *sql.DB) transaction.Repository {
+func New(log *zap.SugaredLogger, conn *sqlx.DB) *Transaction {
 	return &Transaction{
 		log:  log,
 		conn: conn,
@@ -26,7 +24,7 @@ func New(log *zap.SugaredLogger, conn *sql.DB) transaction.Repository {
 }
 
 // CreateTransaction creates a new transaction.
-func (t *Transaction) CreateTransaction(ctx context.Context, transaction *domain.Transaction) error {
+func (t *Transaction) CreateTransaction(ctx context.Context, transaction *model.TransactionDao) error {
 	query := `
 		INSERT INTO transactions ( 
 			user_id,
@@ -34,10 +32,11 @@ func (t *Transaction) CreateTransaction(ctx context.Context, transaction *domain
 			source_type,
 			state,
 			amount
-		) VALUES ($1, $2, $3, $4, $5);
+		) VALUES ($1, $2, $3, $4, $5)
+		RETURNING id;
 	`
 
-	_, err := t.conn.ExecContext(
+	err := t.conn.QueryRowContext(
 		ctx,
 		query,
 		transaction.UserID,
@@ -45,7 +44,7 @@ func (t *Transaction) CreateTransaction(ctx context.Context, transaction *domain
 		transaction.SourceType,
 		transaction.State,
 		transaction.Amount,
-	)
+	).Scan(&transaction.ID)
 
 	if err != nil {
 		t.log.Errorf("error while creating transaction: %v", err)
@@ -79,11 +78,6 @@ func (t *Transaction) CancelTransaction(ctx context.Context, id string) error {
 		err = tx.Rollback()
 		if err != nil {
 			return model.ErrorInternalServer
-		}
-
-		if errors.Is(err, sql.ErrNoRows) {
-
-			return model.ErrorNotFound
 		}
 
 		return model.ErrorInternalServer
@@ -127,7 +121,7 @@ func (t *Transaction) CheckExistance(ctx context.Context, id string) (bool, erro
 
 // GetLatestOddAndUncancelledTransactions returns the latest odd transactions with a limit.
 // Odd records definition was unclear, it means odd amount, transactionId or id etc., so I haven't implemented it.
-func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context, limit int) ([]*domain.Transaction, error) {
+func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context, limit int) ([]*model.TransactionDao, error) {
 	query := `
 		SELECT id,
 			user_id,
@@ -136,8 +130,7 @@ func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context
 			state,
 			amount,
 			created_at,
-			cancelled,
-			cancelled_at
+			cancelled 
 		 FROM transactions
 			WHERE cancelled = false
 			ORDER BY created_at DESC
@@ -155,10 +148,10 @@ func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context
 
 	defer rows.Close()
 
-	transactions := []*domain.Transaction{}
+	transactions := []*model.TransactionDao{}
 
 	for rows.Next() {
-		transaction := &domain.Transaction{}
+		transaction := &model.TransactionDao{}
 		err = rows.Scan(
 			&transaction.ID,
 			&transaction.UserID,
@@ -168,7 +161,6 @@ func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context
 			&transaction.Amount,
 			&transaction.CreatedAt,
 			&transaction.Cancelled,
-			&transaction.CancelledAt,
 		)
 		if err != nil {
 			return nil, model.ErrorInternalServer

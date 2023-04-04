@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  postgresql:
+    image: postgres
+    container_name: postgresql
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    restart: always
+    environment:
+      - POSTGRES_USER=entain
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=entain
+      - POSTGRES_HOST=5432
+    command: -p 5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data 
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8085:8080    
+
+volumes:
+  pgdata: 

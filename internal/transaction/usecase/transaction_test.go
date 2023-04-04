@@ -8,14 +8,15 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"github.com/ttagiyeva/entain/internal/domain"
-	"github.com/ttagiyeva/entain/internal/mocks"
-	"github.com/ttagiyeva/entain/internal/model"
 	"go.uber.org/zap"
+
+	"github.com/ttagiyeva/entain/internal/model"
+	"github.com/ttagiyeva/entain/internal/transaction/mocks"
+	userMocks "github.com/ttagiyeva/entain/internal/user/mocks"
 )
 
 func TestProcess(t *testing.T) {
-	user := &domain.User{
+	user := &model.UserDao{
 		ID:      gofakeit.UUID(),
 		Balance: gofakeit.Float32(),
 	}
@@ -30,13 +31,13 @@ func TestProcess(t *testing.T) {
 	testCases := []struct {
 		name          string
 		body          *model.Transaction
-		buildStubs    func(trRepo *mocks.MockTransactionRepository, userRepo *mocks.MockUserRepository)
+		buildStubs    func(trRepo *mocks.MockTransactionRepository, userRepo *userMocks.MockUserRepository)
 		checkResponse func(err error)
 	}{
 		{
 			name: "OK",
 			body: tr,
-			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *mocks.MockUserRepository) {
+			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *userMocks.MockUserRepository) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(user, nil)
 				userRepo.EXPECT().UpdateUserBalance(gomock.Any(), user).Return(nil).Times(1)
@@ -49,7 +50,7 @@ func TestProcess(t *testing.T) {
 		{
 			name: "Existed transaction",
 			body: tr,
-			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *mocks.MockUserRepository) {
+			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *userMocks.MockUserRepository) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(true, nil)
 			},
 			checkResponse: func(err error) {
@@ -59,7 +60,7 @@ func TestProcess(t *testing.T) {
 		{
 			name: "User not found",
 			body: tr,
-			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *mocks.MockUserRepository) {
+			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *userMocks.MockUserRepository) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil).Times(1)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(nil, model.ErrorNotFound)
 
@@ -71,7 +72,7 @@ func TestProcess(t *testing.T) {
 		{
 			name: "Insufficient balance",
 			body: tr,
-			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *mocks.MockUserRepository) {
+			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *userMocks.MockUserRepository) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil).Times(1)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(nil, model.ErrorInsufficientBalance)
 			},
@@ -82,7 +83,7 @@ func TestProcess(t *testing.T) {
 		{
 			name: "Internal server",
 			body: tr,
-			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *mocks.MockUserRepository) {
+			buildStubs: func(trRepo *mocks.MockTransactionRepository, userRepo *userMocks.MockUserRepository) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(user, nil)
 				userRepo.EXPECT().UpdateUserBalance(gomock.Any(), user).Return(nil).Times(1)
@@ -102,7 +103,7 @@ func TestProcess(t *testing.T) {
 			defer ctrl.Finish()
 
 			trRepo := mocks.NewMockTransactionRepository(ctrl)
-			userRepo := mocks.NewMockUserRepository(ctrl)
+			userRepo := userMocks.NewMockUserRepository(ctrl)
 
 			tc.buildStubs(trRepo, userRepo)
 
@@ -117,7 +118,7 @@ func TestProcess(t *testing.T) {
 }
 
 func TestPostProcess(t *testing.T) {
-	transactions := []*domain.Transaction{
+	transactions := []*model.TransactionDao{
 		{
 			ID:            gofakeit.UUID(),
 			UserID:        gofakeit.UUID(),
@@ -159,7 +160,7 @@ func TestPostProcess(t *testing.T) {
 			defer ctrl.Finish()
 
 			trRepo := mocks.NewMockTransactionRepository(ctrl)
-			userRepo := mocks.NewMockUserRepository(ctrl)
+			userRepo := userMocks.NewMockUserRepository(ctrl)
 
 			tc.buildStubs(trRepo, &wg)
 

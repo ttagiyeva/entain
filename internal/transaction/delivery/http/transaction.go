@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
-	"github.com/ttagiyeva/entain/internal/config"
+	"github.com/ttagiyeva/entain/internal/constants"
 	"github.com/ttagiyeva/entain/internal/model"
 	"github.com/ttagiyeva/entain/internal/transaction"
 	"go.uber.org/zap"
@@ -36,10 +36,9 @@ func (h *Handler) Process(ctx echo.Context) error {
 		})
 	}
 
-	sourceType := ctx.Request().Header.Get(config.SourceType)
-	_, ok := model.SourceType[sourceType]
+	sourceType := ctx.Request().Header.Get(constants.SourceType)
+	_, ok := constants.SourceTypes[sourceType]
 	if !ok {
-
 		return ctx.JSON(http.StatusBadRequest, model.Error{
 			Code:    http.StatusBadRequest,
 			Message: model.ErrorInvalidSourceType,
@@ -50,7 +49,6 @@ func (h *Handler) Process(ctx echo.Context) error {
 	transaction.UserID = ctx.Param("id")
 
 	if strings.Trim(transaction.TransactionID, " ") == "" {
-
 		return ctx.JSON(http.StatusBadRequest, model.Error{
 			Code:    http.StatusBadRequest,
 			Message: model.ErrorInvalidTransactionId,
@@ -58,14 +56,13 @@ func (h *Handler) Process(ctx echo.Context) error {
 	}
 
 	if transaction.Amount <= 0 {
-
 		return ctx.JSON(http.StatusBadRequest, model.Error{
 			Code:    http.StatusBadRequest,
 			Message: model.ErrorInvalidAmont,
 		})
 	}
 
-	_, ok = model.State[transaction.State]
+	_, ok = constants.States[transaction.State]
 	if !ok {
 		return ctx.JSON(http.StatusBadRequest, model.Error{
 			Code:    http.StatusBadRequest,

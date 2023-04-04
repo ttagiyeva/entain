@@ -7,20 +7,19 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	"github.com/ttagiyeva/entain/internal/domain"
 	"github.com/ttagiyeva/entain/internal/model"
-	"github.com/ttagiyeva/entain/internal/user"
 )
 
 // User is the repository for users.
 type User struct {
 	log  *zap.SugaredLogger
-	conn *sql.DB
+	conn *sqlx.DB
 }
 
 // New returns a new User object.
-func New(log *zap.SugaredLogger, conn *sql.DB) user.Repository {
+func New(log *zap.SugaredLogger, conn *sqlx.DB) *User {
 	return &User{
 		log:  log,
 		conn: conn,
@@ -28,7 +27,7 @@ func New(log *zap.SugaredLogger, conn *sql.DB) user.Repository {
 }
 
 // GetUser returns a user by id.
-func (a *User) GetUser(ctx context.Context, id string) (*domain.User, error) {
+func (a *User) GetUser(ctx context.Context, id string) (*model.UserDao, error) {
 	query := `
 		SELECT
 			id,
@@ -36,7 +35,7 @@ func (a *User) GetUser(ctx context.Context, id string) (*domain.User, error) {
 		FROM users
 		WHERE id = $1;
 	`
-	user := &domain.User{}
+	user := &model.UserDao{}
 
 	err := a.conn.QueryRowContext(
 		ctx,
@@ -50,7 +49,6 @@ func (a *User) GetUser(ctx context.Context, id string) (*domain.User, error) {
 	if err != nil {
 		a.log.Errorf("error while getting user: %v", err)
 		if errors.Is(err, sql.ErrNoRows) {
-
 			return nil, model.ErrorNotFound
 		}
 
@@ -61,7 +59,7 @@ func (a *User) GetUser(ctx context.Context, id string) (*domain.User, error) {
 }
 
 // UpdateUserBalance updates the balance of a user.
-func (a *User) UpdateUserBalance(ctx context.Context, user *domain.User) error {
+func (a *User) UpdateUserBalance(ctx context.Context, user *model.UserDao) error {
 	query := `
 		UPDATE users
 		SET balance = $1
@@ -85,19 +83,12 @@ func (a *User) UpdateUserBalance(ctx context.Context, user *domain.User) error {
 	if err != nil {
 		err = tx.Rollback()
 		if err != nil {
-
 			return model.ErrorInternalServer
-		}
-
-		if errors.Is(err, sql.ErrNoRows) {
-
-			return model.ErrorNotFound
 		}
 
 		var pqError *pq.Error
 		if errors.As(err, &pqError) {
 			if pqError.Constraint == "check_positive" {
-
 				return model.ErrorInsufficientBalance
 			}
 		}
@@ -107,7 +98,6 @@ func (a *User) UpdateUserBalance(ctx context.Context, user *domain.User) error {
 
 	err = tx.Commit()
 	if err != nil {
-
 		return model.ErrorInternalServer
 	}
 
