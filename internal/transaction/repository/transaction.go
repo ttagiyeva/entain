@@ -166,7 +166,7 @@ func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context
 			&transaction.Cancelled,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("repo.transaction.GetLatestOddAndUncancelledTransactions.Scan: %w", err)
+			return nil, fmt.Errorf("repo.transaction.GetLatestTransactions.Scan: %w", err)
 		}
 
 		transactions = append(transactions, transaction)
