@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"go.uber.org/zap"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/ttagiyeva/entain/internal/model"
@@ -14,14 +12,12 @@ import (
 
 // User is the repository for users.
 type User struct {
-	log  *zap.SugaredLogger
 	conn *sqlx.DB
 }
 
 // New returns a new User object.
-func New(log *zap.SugaredLogger, conn *sqlx.DB) *User {
+func New(conn *sqlx.DB) *User {
 	return &User{
-		log:  log,
 		conn: conn,
 	}
 }
@@ -47,7 +43,6 @@ func (a *User) GetUser(ctx context.Context, id string) (*model.UserDao, error) {
 	)
 
 	if err != nil {
-		a.log.Errorf("error while getting user: %v", err)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, model.ErrorNotFound
 		}

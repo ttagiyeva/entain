@@ -201,9 +201,7 @@ func TestProcess(t *testing.T) {
 
 			tc.buildStubs(trRepo, userRepo, db)
 
-			usecase := New(nil, trRepo, userRepo, nil)
-			usecase.db = db
-
+			usecase := New(nil, trRepo, userRepo, db)
 			err := usecase.Process(context.Background(), tr)
 
 			tc.checkResponse(err)
@@ -261,8 +259,7 @@ func TestPostProcess(t *testing.T) {
 
 			tc.buildStubs(trRepo, &wg)
 
-			usecase := New(zap.NewNop().Sugar(), trRepo, userRepo, nil)
-			usecase.db = db
+			usecase := New(zap.NewNop().Sugar(), trRepo, userRepo, db)
 			usecase.PostProcess(ctx)
 			wg.Wait()
 		})

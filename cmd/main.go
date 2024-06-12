@@ -27,13 +27,13 @@ func main() {
 			logger.NewZapLogger,
 			service.NewServer,
 			http.NewHandler,
-
 			database.NewPostgres,
 
 			fx.Annotate(
 				func(postgres *database.Postgres) transaction.Database {
 					return postgres
 				},
+
 				fx.As(new(transaction.Database)),
 			),
 
@@ -51,8 +51,8 @@ func main() {
 			),
 
 			fx.Annotate(
-				func(logger *zap.SugaredLogger, postgres *database.Postgres) user.Repository {
-					return userRepo.New(logger, postgres.Connection)
+				func(postgres *database.Postgres) user.Repository {
+					return userRepo.New(postgres.Connection)
 				},
 
 				fx.As(new(user.Repository)),
@@ -80,6 +80,7 @@ func main() {
 			func(uc transaction.Usecase) {
 				go uc.PostProcess(context.Background())
 			},
+
 			service.RegisterRouters,
 		),
 	).Run()

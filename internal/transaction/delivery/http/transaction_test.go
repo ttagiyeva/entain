@@ -36,10 +36,9 @@ func TestTransactionHandler_Process(t *testing.T) {
 			expectedCode: http.StatusOK,
 		},
 		{
-			name: "Invalid request body",
-			body: []byte(`{"transactionId":"1","state":"win","amount":"1"}`),
-			buildStubs: func(trUsecase *mocks.MockUsecase) {
-			},
+			name:         "Invalid request body",
+			body:         []byte(`{"transactionId":"1","state":"win","amount":"1"}`),
+			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
 			expectedCode: http.StatusBadRequest,
 			expectedError: &model.Error{
 				Code:    http.StatusBadRequest,
@@ -47,11 +46,10 @@ func TestTransactionHandler_Process(t *testing.T) {
 			},
 		},
 		{
-			name:       "Invalid source type",
-			body:       []byte(`{"transactionId":"1","state":"win","amount":1}`),
-			SourceType: "test",
-			buildStubs: func(trUsecase *mocks.MockUsecase) {
-			},
+			name:         "Invalid source type",
+			body:         []byte(`{"transactionId":"1","state":"win","amount":1}`),
+			SourceType:   "test",
+			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
 			expectedCode: http.StatusBadRequest,
 			expectedError: &model.Error{
 				Code:    http.StatusBadRequest,
@@ -59,10 +57,9 @@ func TestTransactionHandler_Process(t *testing.T) {
 			},
 		},
 		{
-			name: "Invalid state",
-			body: []byte(`{"transactionId":"1","state":"won","amount":1}`),
-			buildStubs: func(trUsecase *mocks.MockUsecase) {
-			},
+			name:         "Invalid state",
+			body:         []byte(`{"transactionId":"1","state":"won","amount":1}`),
+			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
 			expectedCode: http.StatusBadRequest,
 			expectedError: &model.Error{
 				Code:    http.StatusBadRequest,
@@ -70,10 +67,9 @@ func TestTransactionHandler_Process(t *testing.T) {
 			},
 		},
 		{
-			name: "Invalid amount",
-			body: []byte(`{"transactionId":"1","state":"win","amount":-1}`),
-			buildStubs: func(trUsecase *mocks.MockUsecase) {
-			},
+			name:         "Invalid amount",
+			body:         []byte(`{"transactionId":"1","state":"win","amount":-1}`),
+			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
 			expectedCode: http.StatusBadRequest,
 			expectedError: &model.Error{
 				Code:    http.StatusBadRequest,
@@ -81,10 +77,9 @@ func TestTransactionHandler_Process(t *testing.T) {
 			},
 		},
 		{
-			name: "Invalid transactionId",
-			body: []byte(`{"state":"win","amount":1}`),
-			buildStubs: func(trUsecase *mocks.MockUsecase) {
-			},
+			name:         "Invalid transactionId",
+			body:         []byte(`{"state":"win","amount":1}`),
+			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
 			expectedCode: http.StatusBadRequest,
 			expectedError: &model.Error{
 				Code:    http.StatusBadRequest,

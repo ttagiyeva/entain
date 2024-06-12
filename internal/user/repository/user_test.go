@@ -15,7 +15,6 @@ import (
 	_ "github.com/golang-migrate/migrate/source/file"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
-	"go.uber.org/zap"
 
 	"github.com/ttagiyeva/entain/internal/config"
 	"github.com/ttagiyeva/entain/internal/database"
@@ -36,10 +35,6 @@ func TestUserRepoTestSuite(t *testing.T) {
 
 func (u *userRepoTestSuite) SetupSuite() {
 	ctx := context.Background()
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		u.Error(err, "failed to create zap logger")
-	}
 
 	cfg := config.Config{
 		DB: config.DB{
@@ -101,7 +96,7 @@ func (u *userRepoTestSuite) SetupSuite() {
 
 	u.db = db
 
-	u.repo = repository.New(logger.Sugar(), u.db.Connection)
+	u.repo = repository.New(u.db.Connection)
 }
 
 func (u *userRepoTestSuite) SetupTest() {

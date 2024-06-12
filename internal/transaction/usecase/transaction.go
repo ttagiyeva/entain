@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/ttagiyeva/entain/internal/constants"
-	"github.com/ttagiyeva/entain/internal/database"
 	"github.com/ttagiyeva/entain/internal/model"
 	"github.com/ttagiyeva/entain/internal/transaction"
 	"github.com/ttagiyeva/entain/internal/user"
@@ -21,7 +20,7 @@ type Transaction struct {
 }
 
 // New creates a new transaction usecase.
-func New(log *zap.SugaredLogger, r transaction.Repository, u user.Repository, d *database.Postgres) *Transaction {
+func New(log *zap.SugaredLogger, r transaction.Repository, u user.Repository, d transaction.Database) *Transaction {
 	return &Transaction{
 		log:             log,
 		transactionRepo: r,
