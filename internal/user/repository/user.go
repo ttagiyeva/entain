@@ -33,7 +33,7 @@ func (a *User) GetUser(ctx context.Context, id string) (*model.UserDao, error) {
 			id,
 			balance
 		FROM users
-		WHERE id = $1;
+		WHERE id = $1 FOR UPDATE;
 	`
 	user := &model.UserDao{}
 
@@ -59,21 +59,14 @@ func (a *User) GetUser(ctx context.Context, id string) (*model.UserDao, error) {
 }
 
 // UpdateUserBalance updates the balance of a user.
-func (a *User) UpdateUserBalance(ctx context.Context, user *model.UserDao) error {
+func (a *User) UpdateUserBalance(tx *sql.Tx, ctx context.Context, user *model.UserDao) error {
 	query := `
 		UPDATE users
 		SET balance = $1
 		WHERE id = $2
 		RETURNING id, balance;
 	`
-	tx, err := a.conn.Begin()
-	if err != nil {
-		a.log.Errorf("error while updating balance: %v", err)
-
-		return model.ErrorInternalServer
-	}
-
-	_, err = tx.ExecContext(
+	_, err := tx.ExecContext(
 		ctx,
 		query,
 		user.Balance,
@@ -81,23 +74,13 @@ func (a *User) UpdateUserBalance(ctx context.Context, user *model.UserDao) error
 	)
 
 	if err != nil {
-		err = tx.Rollback()
-		if err != nil {
-			return model.ErrorInternalServer
-		}
-
 		var pqError *pq.Error
 		if errors.As(err, &pqError) {
-			if pqError.Constraint == "check_positive" {
+			if pqError.Constraint == "users_balance_check" {
 				return model.ErrorInsufficientBalance
 			}
 		}
 
-		return model.ErrorInternalServer
-	}
-
-	err = tx.Commit()
-	if err != nil {
 		return model.ErrorInternalServer
 	}
 

@@ -2,8 +2,11 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"go.uber.org/zap"
 
 	"github.com/ttagiyeva/entain/internal/model"
@@ -24,7 +27,7 @@ func New(log *zap.SugaredLogger, conn *sqlx.DB) *Transaction {
 }
 
 // CreateTransaction creates a new transaction.
-func (t *Transaction) CreateTransaction(ctx context.Context, transaction *model.TransactionDao) error {
+func (t *Transaction) CreateTransaction(tx *sql.Tx, ctx context.Context, transaction *model.TransactionDao) error {
 	query := `
 		INSERT INTO transactions ( 
 			user_id,
@@ -36,7 +39,7 @@ func (t *Transaction) CreateTransaction(ctx context.Context, transaction *model.
 		RETURNING id;
 	`
 
-	err := t.conn.QueryRowContext(
+	err := tx.QueryRowContext(
 		ctx,
 		query,
 		transaction.UserID,
@@ -48,6 +51,13 @@ func (t *Transaction) CreateTransaction(ctx context.Context, transaction *model.
 
 	if err != nil {
 		t.log.Errorf("error while creating transaction: %v", err)
+
+		var pqError *pq.Error
+		if errors.As(err, &pqError) {
+			if pqError.Constraint == "unique_transaction_id" {
+				return model.ErrorTransactionAlreadyExists
+			}
+		}
 
 		return model.ErrorInternalServer
 	}

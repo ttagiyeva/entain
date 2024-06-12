@@ -3,7 +3,6 @@ package model
 import "time"
 
 type Transaction struct {
-	ID            string
 	TransactionID string  `json:"transactionId"`
 	State         string  `json:"state"`
 	Amount        float32 `json:"amount"`

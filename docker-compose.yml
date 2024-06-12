@@ -1,11 +1,20 @@
 version: "3.8"
 
 services:
+  app:
+    build: .
+    container_name: entain
+    env_file:
+      - .env/dev
+    environment:
+      ENTAIN_DB_HOST: "postgresql"  
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgresql
   postgresql:
     image: postgres
     container_name: postgresql
-    expose:
-      - "5432"
     ports:
       - "5432:5432"
     restart: always
@@ -18,11 +27,5 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data 
 
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 8085:8080    
-
 volumes:
-  pgdata: 
+  pgdata:

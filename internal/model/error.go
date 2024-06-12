@@ -8,7 +8,7 @@ const (
 	//ErrorInvalidSourceType will throw if the given request header state is not valid
 	ErrorInvalidState = "State is invalid"
 	// ErrorInvalidAmount will throw if the given request body amount is not valid
-	ErrorInvalidAmont = "Amount is invalid"
+	ErrorInvalidAmount = "Amount is invalid"
 	//ErrorInvalidTransactionId will throw if the given request body transactionId is not valid
 	ErrorInvalidTransactionId = "TransactionId is invalid"
 	//ErrorBadRequest will throw if the given request param is not valid

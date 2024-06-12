@@ -28,7 +28,7 @@ func NewHandler(log *zap.SugaredLogger, u transaction.Usecase) *Handler {
 func (h *Handler) Process(ctx echo.Context) error {
 	transaction := &model.Transaction{}
 
-	err := ctx.Bind(&transaction)
+	err := ctx.Bind(transaction)
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, model.Error{
 			Code:    http.StatusBadRequest,
@@ -58,7 +58,7 @@ func (h *Handler) Process(ctx echo.Context) error {
 	if transaction.Amount <= 0 {
 		return ctx.JSON(http.StatusBadRequest, model.Error{
 			Code:    http.StatusBadRequest,
-			Message: model.ErrorInvalidAmont,
+			Message: model.ErrorInvalidAmount,
 		})
 	}
 
@@ -89,8 +89,6 @@ func getStatusCode(err error) int {
 	}
 
 	switch err {
-	case model.ErrorInternalServer:
-		return http.StatusInternalServerError
 	case model.ErrorNotFound:
 		return http.StatusNotFound
 	case model.ErrorInsufficientBalance:

@@ -13,7 +13,6 @@ import (
 	"github.com/golang-migrate/migrate"
 	_ "github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
@@ -135,14 +134,20 @@ func (u *userRepoTestSuite) TestUpdateUserBalance() {
 		Balance: 100,
 	}
 
-	err := u.repo.UpdateUserBalance(ctx, user)
+	tx := u.db.Connection.MustBegin().Tx
+
+	err := u.repo.UpdateUserBalance(tx, ctx, user)
 	u.NoError(err)
 	u.Equal(float32(100), user.Balance)
 
 	user.Balance = -100
-	u.Error(u.repo.UpdateUserBalance(ctx, user))
+	err = u.repo.UpdateUserBalance(tx, ctx, user)
+	u.EqualError(err, model.ErrorInsufficientBalance.Error())
 
+	tx = u.db.Connection.MustBegin().Tx
 	user.ID = faker.UUIDHyphenated()
-	err = u.repo.UpdateUserBalance(ctx, user)
+	err = u.repo.UpdateUserBalance(tx, ctx, user)
 	u.Nil(err)
+
+	tx.Rollback()
 }

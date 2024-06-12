@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	sql "database/sql"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -51,15 +52,15 @@ func (mr *MockUserRepositoryMockRecorder) GetUser(ctx, id interface{}) *gomock.C
 }
 
 // UpdateUserBalance mocks base method.
-func (m *MockUserRepository) UpdateUserBalance(ctx context.Context, user *model.UserDao) error {
+func (m *MockUserRepository) UpdateUserBalance(tx *sql.Tx, ctx context.Context, user *model.UserDao) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateUserBalance", ctx, user)
+	ret := m.ctrl.Call(m, "UpdateUserBalance", tx, ctx, user)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateUserBalance indicates an expected call of UpdateUserBalance.
-func (mr *MockUserRepositoryMockRecorder) UpdateUserBalance(ctx, user interface{}) *gomock.Call {
+func (mr *MockUserRepositoryMockRecorder) UpdateUserBalance(tx, ctx, user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserBalance", reflect.TypeOf((*MockUserRepository)(nil).UpdateUserBalance), ctx, user)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserBalance", reflect.TypeOf((*MockUserRepository)(nil).UpdateUserBalance), tx, ctx, user)
 }

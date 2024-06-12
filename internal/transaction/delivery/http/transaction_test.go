@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -21,8 +22,10 @@ func TestTransactionHandler_Process(t *testing.T) {
 	testCases := []struct {
 		name          string
 		body          []byte
+		SourceType    string
 		buildStubs    func(trUsecase *mocks.MockUsecase)
-		checkResponse func(recorder *httptest.ResponseRecorder)
+		expectedCode  int
+		expectedError *model.Error
 	}{
 		{
 			name: "OK",
@@ -30,17 +33,29 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(nil)
 			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusOK, recorder.Code)
-			},
+			expectedCode: http.StatusOK,
 		},
 		{
 			name: "Invalid request body",
 			body: []byte(`{"transactionId":"1","state":"win","amount":"1"}`),
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			expectedCode: http.StatusBadRequest,
+			expectedError: &model.Error{
+				Code:    http.StatusBadRequest,
+				Message: model.ErrorBadRequest,
+			},
+		},
+		{
+			name:       "Invalid source type",
+			body:       []byte(`{"transactionId":"1","state":"win","amount":1}`),
+			SourceType: "test",
+			buildStubs: func(trUsecase *mocks.MockUsecase) {
+			},
+			expectedCode: http.StatusBadRequest,
+			expectedError: &model.Error{
+				Code:    http.StatusBadRequest,
+				Message: model.ErrorInvalidSourceType,
 			},
 		},
 		{
@@ -48,8 +63,10 @@ func TestTransactionHandler_Process(t *testing.T) {
 			body: []byte(`{"transactionId":"1","state":"won","amount":1}`),
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			expectedCode: http.StatusBadRequest,
+			expectedError: &model.Error{
+				Code:    http.StatusBadRequest,
+				Message: model.ErrorInvalidState,
 			},
 		},
 		{
@@ -57,8 +74,21 @@ func TestTransactionHandler_Process(t *testing.T) {
 			body: []byte(`{"transactionId":"1","state":"win","amount":-1}`),
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			expectedCode: http.StatusBadRequest,
+			expectedError: &model.Error{
+				Code:    http.StatusBadRequest,
+				Message: model.ErrorInvalidAmount,
+			},
+		},
+		{
+			name: "Invalid transactionId",
+			body: []byte(`{"state":"win","amount":1}`),
+			buildStubs: func(trUsecase *mocks.MockUsecase) {
+			},
+			expectedCode: http.StatusBadRequest,
+			expectedError: &model.Error{
+				Code:    http.StatusBadRequest,
+				Message: model.ErrorInvalidTransactionId,
 			},
 		},
 		{
@@ -67,8 +97,22 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorTransactionAlreadyExists)
 			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusConflict, recorder.Code)
+			expectedCode: getStatusCode(model.ErrorTransactionAlreadyExists),
+			expectedError: &model.Error{
+				Code:    getStatusCode(model.ErrorTransactionAlreadyExists),
+				Message: model.ErrorTransactionAlreadyExists.Error(),
+			},
+		},
+		{
+			name: "Insufficient Balance error",
+			body: []byte(`{"transactionId":"1","state":"win","amount":1}`),
+			buildStubs: func(trUsecase *mocks.MockUsecase) {
+				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorInsufficientBalance)
+			},
+			expectedCode: getStatusCode(model.ErrorInsufficientBalance),
+			expectedError: &model.Error{
+				Code:    getStatusCode(model.ErrorInsufficientBalance),
+				Message: model.ErrorInsufficientBalance.Error(),
 			},
 		},
 		{
@@ -77,8 +121,10 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorNotFound)
 			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusNotFound, recorder.Code)
+			expectedCode: getStatusCode(model.ErrorNotFound),
+			expectedError: &model.Error{
+				Code:    getStatusCode(model.ErrorNotFound),
+				Message: model.ErrorNotFound.Error(),
 			},
 		},
 		{
@@ -87,8 +133,10 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(fmt.Errorf("unexpected error"))
 			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+			expectedCode: http.StatusInternalServerError,
+			expectedError: &model.Error{
+				Code:    http.StatusInternalServerError,
+				Message: "unexpected error",
 			},
 		},
 	}
@@ -107,13 +155,25 @@ func TestTransactionHandler_Process(t *testing.T) {
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/users/1/transactions", bytes.NewReader(tc.body))
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-			req.Header.Set(constants.SourceType, "game")
+			if tc.SourceType == "" {
+				req.Header.Set(constants.SourceType, "game")
+			} else {
+				req.Header.Set(constants.SourceType, tc.SourceType)
+			}
+
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
 			handler.Process(c)
 
-			tc.checkResponse(rec)
+			require.Equal(t, tc.expectedCode, rec.Code)
+
+			if tc.expectedError != nil {
+				expectedErr, err := json.Marshal(tc.expectedError)
+				require.NoError(t, err)
+
+				require.JSONEq(t, rec.Body.String(), string(expectedErr))
+			}
 		})
 	}
 }

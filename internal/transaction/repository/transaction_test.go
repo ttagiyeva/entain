@@ -13,7 +13,6 @@ import (
 	"github.com/golang-migrate/migrate"
 	_ "github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"go.uber.org/zap"
@@ -128,8 +127,14 @@ func (t *transactionRepoTestSuite) TestCreateTransaction() {
 		Cancelled:     false,
 	}
 
-	t.NoError(t.repo.CreateTransaction(ctx, transaction))
+	tx := t.db.Connection.MustBegin().Tx
+	defer tx.Commit()
+
+	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
 	t.NotEqual(0, transaction.ID)
+
+	err := t.repo.CreateTransaction(tx, ctx, transaction)
+	t.EqualError(err, model.ErrorTransactionAlreadyExists.Error())
 }
 
 func (t *transactionRepoTestSuite) TestCancelTransaction() {
@@ -144,8 +149,12 @@ func (t *transactionRepoTestSuite) TestCancelTransaction() {
 		Cancelled:     false,
 	}
 
-	t.NoError(t.repo.CreateTransaction(ctx, transaction))
+	tx := t.db.Connection.MustBegin().Tx
+
+	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
 	t.NotEqual(0, transaction.ID)
+
+	tx.Commit()
 
 	t.NoError(t.repo.CancelTransaction(ctx, transaction.ID))
 
@@ -165,8 +174,12 @@ func (t *transactionRepoTestSuite) TestCheckExistance() {
 		Cancelled:     false,
 	}
 
-	t.NoError(t.repo.CreateTransaction(ctx, transaction))
+	tx := t.db.Connection.MustBegin().Tx
+
+	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
 	t.NotEqual(0, transaction.ID)
+
+	tx.Commit()
 
 	ok, err := t.repo.CheckExistance(ctx, transaction.TransactionID)
 	t.Equal(true, ok)
@@ -189,8 +202,12 @@ func (t *transactionRepoTestSuite) TestGetLatestOddAndUncancelledTransactions() 
 		Cancelled:     false,
 	}
 
-	t.NoError(t.repo.CreateTransaction(ctx, transaction))
+	tx := t.db.Connection.MustBegin().Tx
+
+	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
 	t.NotEqual(0, transaction.ID)
+
+	tx.Commit()
 
 	transactions, err := t.repo.GetLatestOddAndUncancelledTransactions(ctx, 10)
 	t.NoError(err)

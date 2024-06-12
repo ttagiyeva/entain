@@ -31,6 +31,13 @@ func main() {
 			database.NewPostgres,
 
 			fx.Annotate(
+				func(postgres *database.Postgres) transaction.Database {
+					return postgres
+				},
+				fx.As(new(transaction.Database)),
+			),
+
+			fx.Annotate(
 				usecase.New,
 				fx.As(new(transaction.Usecase)),
 			),
@@ -39,6 +46,7 @@ func main() {
 				func(logger *zap.SugaredLogger, postgres *database.Postgres) transaction.Repository {
 					return repository.New(logger, postgres.Connection)
 				},
+
 				fx.As(new(transaction.Repository)),
 			),
 
@@ -46,6 +54,7 @@ func main() {
 				func(logger *zap.SugaredLogger, postgres *database.Postgres) user.Repository {
 					return userRepo.New(logger, postgres.Connection)
 				},
+
 				fx.As(new(user.Repository)),
 			),
 		),

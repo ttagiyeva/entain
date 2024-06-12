@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/ttagiyeva/entain/internal/model"
 )
@@ -11,5 +12,5 @@ import (
 // Repository is a repository for users
 type Repository interface {
 	GetUser(ctx context.Context, id string) (*model.UserDao, error)
-	UpdateUserBalance(ctx context.Context, user *model.UserDao) error
+	UpdateUserBalance(tx *sql.Tx, ctx context.Context, user *model.UserDao) error
 }

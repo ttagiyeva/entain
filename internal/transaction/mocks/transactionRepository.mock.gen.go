@@ -6,37 +6,38 @@ package mocks
 
 import (
 	context "context"
+	sql "database/sql"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
 	model "github.com/ttagiyeva/entain/internal/model"
 )
 
-// MockTransactionRepository is a mock of Repository interface.
-type MockTransactionRepository struct {
+// MockRepository is a mock of Repository interface.
+type MockRepository struct {
 	ctrl     *gomock.Controller
-	recorder *MockTransactionRepositoryMockRecorder
+	recorder *MockRepositoryMockRecorder
 }
 
-// MockTransactionRepositoryMockRecorder is the mock recorder for MockTransactionRepository.
-type MockTransactionRepositoryMockRecorder struct {
-	mock *MockTransactionRepository
+// MockRepositoryMockRecorder is the mock recorder for MockRepository.
+type MockRepositoryMockRecorder struct {
+	mock *MockRepository
 }
 
-// NewMockTransactionRepository creates a new mock instance.
-func NewMockTransactionRepository(ctrl *gomock.Controller) *MockTransactionRepository {
-	mock := &MockTransactionRepository{ctrl: ctrl}
-	mock.recorder = &MockTransactionRepositoryMockRecorder{mock}
+// NewMockRepository creates a new mock instance.
+func NewMockRepository(ctrl *gomock.Controller) *MockRepository {
+	mock := &MockRepository{ctrl: ctrl}
+	mock.recorder = &MockRepositoryMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockTransactionRepository) EXPECT() *MockTransactionRepositoryMockRecorder {
+func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
 // CancelTransaction mocks base method.
-func (m *MockTransactionRepository) CancelTransaction(ctx context.Context, id string) error {
+func (m *MockRepository) CancelTransaction(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelTransaction", ctx, id)
 	ret0, _ := ret[0].(error)
@@ -44,13 +45,13 @@ func (m *MockTransactionRepository) CancelTransaction(ctx context.Context, id st
 }
 
 // CancelTransaction indicates an expected call of CancelTransaction.
-func (mr *MockTransactionRepositoryMockRecorder) CancelTransaction(ctx, id interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) CancelTransaction(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelTransaction", reflect.TypeOf((*MockTransactionRepository)(nil).CancelTransaction), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelTransaction", reflect.TypeOf((*MockRepository)(nil).CancelTransaction), ctx, id)
 }
 
 // CheckExistance mocks base method.
-func (m *MockTransactionRepository) CheckExistance(ctx context.Context, id string) (bool, error) {
+func (m *MockRepository) CheckExistance(ctx context.Context, id string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckExistance", ctx, id)
 	ret0, _ := ret[0].(bool)
@@ -59,27 +60,27 @@ func (m *MockTransactionRepository) CheckExistance(ctx context.Context, id strin
 }
 
 // CheckExistance indicates an expected call of CheckExistance.
-func (mr *MockTransactionRepositoryMockRecorder) CheckExistance(ctx, id interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) CheckExistance(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckExistance", reflect.TypeOf((*MockTransactionRepository)(nil).CheckExistance), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckExistance", reflect.TypeOf((*MockRepository)(nil).CheckExistance), ctx, id)
 }
 
 // CreateTransaction mocks base method.
-func (m *MockTransactionRepository) CreateTransaction(arg0 context.Context, arg1 *model.TransactionDao) error {
+func (m *MockRepository) CreateTransaction(tx *sql.Tx, ctx context.Context, tr *model.TransactionDao) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateTransaction", arg0, arg1)
+	ret := m.ctrl.Call(m, "CreateTransaction", tx, ctx, tr)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateTransaction indicates an expected call of CreateTransaction.
-func (mr *MockTransactionRepositoryMockRecorder) CreateTransaction(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) CreateTransaction(tx, ctx, tr interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTransaction", reflect.TypeOf((*MockTransactionRepository)(nil).CreateTransaction), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTransaction", reflect.TypeOf((*MockRepository)(nil).CreateTransaction), tx, ctx, tr)
 }
 
 // GetLatestOddAndUncancelledTransactions mocks base method.
-func (m *MockTransactionRepository) GetLatestOddAndUncancelledTransactions(ctx context.Context, limit int) ([]*model.TransactionDao, error) {
+func (m *MockRepository) GetLatestOddAndUncancelledTransactions(ctx context.Context, limit int) ([]*model.TransactionDao, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLatestOddAndUncancelledTransactions", ctx, limit)
 	ret0, _ := ret[0].([]*model.TransactionDao)
@@ -88,7 +89,73 @@ func (m *MockTransactionRepository) GetLatestOddAndUncancelledTransactions(ctx c
 }
 
 // GetLatestOddAndUncancelledTransactions indicates an expected call of GetLatestOddAndUncancelledTransactions.
-func (mr *MockTransactionRepositoryMockRecorder) GetLatestOddAndUncancelledTransactions(ctx, limit interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetLatestOddAndUncancelledTransactions(ctx, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestOddAndUncancelledTransactions", reflect.TypeOf((*MockTransactionRepository)(nil).GetLatestOddAndUncancelledTransactions), ctx, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestOddAndUncancelledTransactions", reflect.TypeOf((*MockRepository)(nil).GetLatestOddAndUncancelledTransactions), ctx, limit)
+}
+
+// MockDatabase is a mock of Database interface.
+type MockDatabase struct {
+	ctrl     *gomock.Controller
+	recorder *MockDatabaseMockRecorder
+}
+
+// MockDatabaseMockRecorder is the mock recorder for MockDatabase.
+type MockDatabaseMockRecorder struct {
+	mock *MockDatabase
+}
+
+// NewMockDatabase creates a new mock instance.
+func NewMockDatabase(ctrl *gomock.Controller) *MockDatabase {
+	mock := &MockDatabase{ctrl: ctrl}
+	mock.recorder = &MockDatabaseMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockDatabase) EXPECT() *MockDatabaseMockRecorder {
+	return m.recorder
+}
+
+// BeginTx mocks base method.
+func (m *MockDatabase) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BeginTx", ctx)
+	ret0, _ := ret[0].(*sql.Tx)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// BeginTx indicates an expected call of BeginTx.
+func (mr *MockDatabaseMockRecorder) BeginTx(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeginTx", reflect.TypeOf((*MockDatabase)(nil).BeginTx), ctx)
+}
+
+// Commit mocks base method.
+func (m *MockDatabase) Commit(tx *sql.Tx) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Commit", tx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Commit indicates an expected call of Commit.
+func (mr *MockDatabaseMockRecorder) Commit(tx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockDatabase)(nil).Commit), tx)
+}
+
+// Rollback mocks base method.
+func (m *MockDatabase) Rollback(tx *sql.Tx) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Rollback", tx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Rollback indicates an expected call of Rollback.
+func (mr *MockDatabaseMockRecorder) Rollback(tx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockDatabase)(nil).Rollback), tx)
 }

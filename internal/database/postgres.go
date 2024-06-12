@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"fmt"
 
@@ -83,4 +84,24 @@ func (p *Postgres) MigrateDown() error {
 // Ping verifies a connection to the database is still alive, establishing a connection if necessary.
 func (p *Postgres) Ping() error {
 	return p.Connection.Ping()
+}
+
+// Begin starts a transaction and returns it.
+func (p *Postgres) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	tx, err := p.Connection.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+// Rollback aborts the given transaction.
+func (p *Postgres) Rollback(tx *sql.Tx) error {
+	return tx.Rollback()
+}
+
+// Commit commits the given transaction.
+func (p *Postgres) Commit(tx *sql.Tx) error {
+	return tx.Commit()
 }
