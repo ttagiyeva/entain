@@ -15,7 +15,6 @@ import (
 func NewServer(lc fx.Lifecycle) (*echo.Echo, error) {
 	engine := echo.New()
 
-	engine.Use(middleware.Logger())
 	engine.Use(middleware.Recover())
 	engine.Use(middleware.CORS())
 

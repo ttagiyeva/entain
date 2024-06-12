@@ -23,7 +23,7 @@ func main() {
 	fx.New(
 		fx.Provide(
 			config.New,
-			logger.NewZapLogger,
+			logger.NewLogger,
 			service.NewServer,
 			http.NewHandler,
 			database.NewPostgres,

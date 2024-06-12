@@ -1,43 +1,25 @@
 package logger
 
 import (
-	"context"
+	"log/slog"
+	"os"
 
 	"github.com/ttagiyeva/entain/internal/config"
-	"go.uber.org/fx"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
-// NewZapLogger returns a new instance of zap logger
-func NewZapLogger(lc fx.Lifecycle, conf *config.Config) *zap.SugaredLogger {
-	cfg := zap.Config{
-		Encoding:    conf.Logger.Encoding,
-		OutputPaths: []string{"stdout"},
-		EncoderConfig: zapcore.EncoderConfig{
-			LevelKey:    "level",
-			MessageKey:  "message",
-			FunctionKey: "function",
-			TimeKey:     "time",
-			EncodeLevel: zapcore.LowercaseLevelEncoder,
-			EncodeTime:  zapcore.ISO8601TimeEncoder,
-		},
-		ErrorOutputPaths: []string{"stderr"},
+var logLevels = map[string]slog.Level{
+	"debug": slog.LevelDebug,
+	"info":  slog.LevelInfo,
+	"warn":  slog.LevelWarn,
+	"error": slog.LevelError,
+}
+
+// NewLogger returns a new instance of slog logger.
+func NewLogger(conf *config.Config) *slog.Logger {
+	level, ok := logLevels[conf.Logger.Level]
+	if !ok {
+		level = slog.LevelError
 	}
 
-	cfg.Level.UnmarshalText([]byte(conf.Logger.Level))
-
-	logger, err := cfg.Build()
-	if err != nil {
-		panic(err)
-	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-
-			return logger.Sync()
-		},
-	})
-
-	return logger.Sugar()
+	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true, Level: level}))
 }

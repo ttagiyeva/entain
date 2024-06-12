@@ -129,7 +129,7 @@ func (t *transactionRepoTestSuite) TestCreateTransaction() {
 	t.NotEqual(0, transaction.ID)
 
 	err := t.repo.CreateTransaction(tx, ctx, transaction)
-	t.EqualError(err, fmt.Sprintf("repo.transaction: %v", model.ErrorTransactionAlreadyExists))
+	t.EqualError(err, fmt.Sprintf("repo.transaction.CreateTransaction: %v", model.ErrorTransactionAlreadyExists))
 }
 
 func (t *transactionRepoTestSuite) TestCancelTransaction() {
@@ -149,11 +149,12 @@ func (t *transactionRepoTestSuite) TestCancelTransaction() {
 	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
 	t.NotEqual(0, transaction.ID)
 
-	tx.Commit()
+	err := tx.Commit()
+	t.NoError(err)
 
 	t.NoError(t.repo.CancelTransaction(ctx, transaction.ID))
 
-	err := t.repo.CancelTransaction(ctx, faker.UUIDHyphenated())
+	err = t.repo.CancelTransaction(ctx, faker.UUIDHyphenated())
 	t.Nil(err)
 }
 
@@ -174,7 +175,8 @@ func (t *transactionRepoTestSuite) TestCheckExistance() {
 	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
 	t.NotEqual(0, transaction.ID)
 
-	tx.Commit()
+	err := tx.Commit()
+	t.NoError(err)
 
 	ok, err := t.repo.CheckExistance(ctx, transaction.TransactionID)
 	t.Equal(true, ok)
@@ -202,7 +204,8 @@ func (t *transactionRepoTestSuite) TestGetLatestOddAndUncancelledTransactions() 
 	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
 	t.NotEqual(0, transaction.ID)
 
-	tx.Commit()
+	err := tx.Commit()
+	t.NoError(err)
 
 	transactions, err := t.repo.GetLatestOddAndUncancelledTransactions(ctx, 10)
 	t.NoError(err)

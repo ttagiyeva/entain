@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 
 	"github.com/ttagiyeva/entain/internal/model"
 	"github.com/ttagiyeva/entain/internal/transaction/mocks"
@@ -61,7 +61,7 @@ func TestProcess(t *testing.T) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, errors.New("dummy error"))
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction: dummy error")
+				require.EqualError(t, err, "usecase.transaction.Process.CheckExistance: dummy error")
 			},
 		},
 		{
@@ -71,7 +71,7 @@ func TestProcess(t *testing.T) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(true, nil)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, fmt.Sprintf("usecase.transaction: %v", model.ErrorTransactionAlreadyExists))
+				require.EqualError(t, err, fmt.Sprintf("usecase.transaction.Process.Exist: %v", model.ErrorTransactionAlreadyExists))
 			},
 		},
 		{
@@ -83,7 +83,7 @@ func TestProcess(t *testing.T) {
 
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, fmt.Sprintf("usecase.transaction: %v", model.ErrorNotFound))
+				require.EqualError(t, err, fmt.Sprintf("usecase.transaction.Process.GetUser: %v", model.ErrorNotFound))
 			},
 		},
 		{
@@ -97,7 +97,7 @@ func TestProcess(t *testing.T) {
 				}, nil)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, fmt.Sprintf("usecase.transaction: %v", model.ErrorInsufficientBalance))
+				require.EqualError(t, err, fmt.Sprintf("usecase.transaction.Process.Balance: %v", model.ErrorInsufficientBalance))
 			},
 		},
 		{
@@ -109,7 +109,7 @@ func TestProcess(t *testing.T) {
 				db.EXPECT().BeginTx(gomock.Any()).Return(nil, errors.New("dummy error"))
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction: dummy error")
+				require.EqualError(t, err, "usecase.transaction.Process.BeginTx: dummy error")
 			},
 		},
 		{
@@ -124,7 +124,7 @@ func TestProcess(t *testing.T) {
 
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction: dummy error")
+				require.EqualError(t, err, "usecase.transaction.Process.UpdateUserBalance: dummy error")
 			},
 		},
 		{
@@ -139,7 +139,7 @@ func TestProcess(t *testing.T) {
 
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction: rollback error user error")
+				require.EqualError(t, err, "usecase.transaction.Process.Rollback: rollback error user error")
 			},
 		},
 		{
@@ -154,7 +154,7 @@ func TestProcess(t *testing.T) {
 				db.EXPECT().Rollback(tx).Return(nil).Times(1)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction: dummy error")
+				require.EqualError(t, err, "usecase.transaction.Process.CreateTransaction: dummy error")
 			},
 		},
 		{
@@ -169,7 +169,7 @@ func TestProcess(t *testing.T) {
 				db.EXPECT().Rollback(tx).Return(errors.New("rollback error"))
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction: rollback error internal Server Error")
+				require.EqualError(t, err, "usecase.transaction.Process.Rollback: rollback error internal Server Error")
 			},
 		},
 		{
@@ -184,7 +184,7 @@ func TestProcess(t *testing.T) {
 				db.EXPECT().Commit(tx).Return(errors.New("dummy error"))
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction: dummy error")
+				require.EqualError(t, err, "usecase.transaction.Process.Commit: dummy error")
 			},
 		},
 	}
@@ -260,7 +260,7 @@ func TestPostProcess(t *testing.T) {
 
 			tc.buildStubs(trRepo, &wg)
 
-			usecase := New(zap.NewNop().Sugar(), trRepo, userRepo, db)
+			usecase := New(slog.Default(), trRepo, userRepo, db)
 			usecase.PostProcess(ctx)
 			wg.Wait()
 		})

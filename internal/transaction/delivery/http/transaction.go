@@ -2,24 +2,25 @@ package http
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v4"
+
 	"github.com/ttagiyeva/entain/internal/constants"
 	"github.com/ttagiyeva/entain/internal/model"
 	"github.com/ttagiyeva/entain/internal/transaction"
-	"go.uber.org/zap"
 )
 
 // Handler is a structure which manages http handlers.
 type Handler struct {
-	log     *zap.SugaredLogger
+	log     *slog.Logger
 	usecase transaction.Usecase
 }
 
 // NewHandler creates a new http handler.
-func NewHandler(log *zap.SugaredLogger, u transaction.Usecase) *Handler {
+func NewHandler(log *slog.Logger, u transaction.Usecase) *Handler {
 	return &Handler{
 		log:     log,
 		usecase: u,
@@ -75,7 +76,7 @@ func (h *Handler) Process(ctx echo.Context) error {
 
 	err = h.usecase.Process(c, transaction)
 	if err != nil {
-		h.log.Errorf("handler.transaction: %v body = %v", err, transaction)
+		h.log.With("body", transaction).Error("processing transaction failed", "error", err)
 
 		resp := getStatusCode(err)
 
@@ -95,6 +96,6 @@ func getStatusCode(err error) model.Error {
 	if errors.Is(err, model.ErrorTransactionAlreadyExists) {
 		return model.Error{Code: http.StatusConflict, Message: model.ErrorTransactionAlreadyExists.Error()}
 	}
-	return model.Error{Code: http.StatusInternalServerError, Message: model.ErrorInternalServer.Error()}
 
+	return model.Error{Code: http.StatusInternalServerError, Message: model.ErrorInternalServer.Error()}
 }

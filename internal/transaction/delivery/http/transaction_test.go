@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,10 +12,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
+
 	"github.com/ttagiyeva/entain/internal/constants"
 	"github.com/ttagiyeva/entain/internal/model"
 	"github.com/ttagiyeva/entain/internal/transaction/mocks"
-	"go.uber.org/zap"
 )
 
 // TestTransactionHandler_Process tests the transaction handler process method.
@@ -124,7 +125,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			trUsecase := mocks.NewMockUsecase(ctrl)
 			tc.buildStubs(trUsecase)
 
-			handler := NewHandler(zap.NewNop().Sugar(), trUsecase)
+			handler := NewHandler(slog.Default(), trUsecase)
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/users/1/transactions", bytes.NewReader(tc.body))
@@ -138,7 +139,8 @@ func TestTransactionHandler_Process(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler.Process(c)
+			err := handler.Process(c)
+			require.NoError(t, err)
 
 			if tc.expectedCode != 0 {
 				require.Equal(t, tc.expectedCode, rec.Code)

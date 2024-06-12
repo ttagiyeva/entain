@@ -12,7 +12,7 @@ Service has written using Go programming language.
 * PostgreSQL
 * Docker
 
-## Installation
+## Run locally
 Clone the project
 
 `git clone https://github.com/ttagiyeva/entain.git`
@@ -21,7 +21,6 @@ Setup database
 
 `make postgres`
 
-## Usage
 Set configurations. Project contains `.env/dev` file to ease setup environment variables
 
 `export $(cat .env/dev)`
@@ -38,9 +37,9 @@ Mock request
     "transactionId": "1"
 }'`
 
-Run tests
+## Run tests
 
 1. Generate mocks
 `make generate`
 2. Run tests 
-`go test ./...`    
+`make test`    
