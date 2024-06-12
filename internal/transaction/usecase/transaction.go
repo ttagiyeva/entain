@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ttagiyeva/entain/internal/constants"
@@ -33,16 +34,16 @@ func New(log *zap.SugaredLogger, r transaction.Repository, u user.Repository, d 
 func (t *Transaction) Process(ctx context.Context, tr *model.Transaction) error {
 	exist, err := t.transactionRepo.CheckExistance(ctx, tr.TransactionID)
 	if err != nil {
-		return err
+		return fmt.Errorf("usecase.transaction: %w", err)
 	}
 
 	if exist {
-		return model.ErrorTransactionAlreadyExists
+		return fmt.Errorf("usecase.transaction: %w", model.ErrorTransactionAlreadyExists)
 	}
 
 	user, err := t.userRepo.GetUser(ctx, tr.UserID)
 	if err != nil {
-		return err
+		return fmt.Errorf("usecase.transaction: %w", err)
 	}
 
 	switch tr.State {
@@ -53,22 +54,22 @@ func (t *Transaction) Process(ctx context.Context, tr *model.Transaction) error 
 	}
 
 	if user.Balance < 0 {
-		return model.ErrorInsufficientBalance
+		return fmt.Errorf("usecase.transaction: %w", model.ErrorInsufficientBalance)
 	}
 
 	tx, err := t.db.BeginTx(ctx)
 	if err != nil {
-		return model.ErrorInternalServer
+		return fmt.Errorf("usecase.transaction: %w", err)
 	}
 
 	err = t.userRepo.UpdateUserBalance(tx, ctx, user)
 	if err != nil {
 		errTx := t.db.Rollback(tx)
 		if errTx != nil {
-			return model.ErrorInternalServer
+			return fmt.Errorf("usecase.transaction: %w %w", errTx, err)
 		}
 
-		return err
+		return fmt.Errorf("usecase.transaction: %w", err)
 	}
 
 	trDao := model.TransactionToTransactionDao(tr)
@@ -77,15 +78,15 @@ func (t *Transaction) Process(ctx context.Context, tr *model.Transaction) error 
 	if err != nil {
 		errTx := t.db.Rollback(tx)
 		if errTx != nil {
-			return model.ErrorInternalServer
+			return fmt.Errorf("usecase.transaction: %w %w", errTx, err)
 		}
 
-		return err
+		return fmt.Errorf("usecase.transaction: %w", err)
 	}
 
 	err = t.db.Commit(tx)
 	if err != nil {
-		return model.ErrorInternalServer
+		return fmt.Errorf("usecase.transaction: %w", err)
 	}
 
 	return nil
@@ -97,13 +98,11 @@ func (t *Transaction) PostProcess(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				t.log.Info("transaction usecase post process is stopped")
-
 				return
 			case <-time.After(time.Second * constants.Interval):
 				transactions, err := t.transactionRepo.GetLatestOddAndUncancelledTransactions(ctx, 10)
 				if err != nil {
-					t.log.Errorf("error while getting latest odd and uncancelled transactions: %v", err)
+					t.log.Errorf("error usecase.transaction: %w", err)
 
 					continue
 				}
@@ -111,7 +110,7 @@ func (t *Transaction) PostProcess(ctx context.Context) {
 				for _, tr := range transactions {
 					err := t.transactionRepo.CancelTransaction(ctx, tr.ID)
 					if err != nil {
-						t.log.Errorf("error while cancelling transaction: %v", err)
+						t.log.Errorf("error usecase.transaction: %w", err)
 
 						continue
 					}

@@ -15,7 +15,6 @@ import (
 	_ "github.com/golang-migrate/migrate/source/file"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
-	"go.uber.org/zap"
 
 	"github.com/ttagiyeva/entain/internal/config"
 	"github.com/ttagiyeva/entain/internal/database"
@@ -36,10 +35,6 @@ func TestTransactionRepoTestSuite(t *testing.T) {
 
 func (t *transactionRepoTestSuite) SetupSuite() {
 	ctx := context.Background()
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		t.Error(err, "failed to create zap logger")
-	}
 
 	cfg := config.Config{
 		DB: config.DB{
@@ -101,7 +96,7 @@ func (t *transactionRepoTestSuite) SetupSuite() {
 
 	t.db = db
 
-	t.repo = repository.New(logger.Sugar(), t.db.Connection)
+	t.repo = repository.New(t.db.Connection)
 }
 
 func (t *transactionRepoTestSuite) SetupTest() {
@@ -134,7 +129,7 @@ func (t *transactionRepoTestSuite) TestCreateTransaction() {
 	t.NotEqual(0, transaction.ID)
 
 	err := t.repo.CreateTransaction(tx, ctx, transaction)
-	t.EqualError(err, model.ErrorTransactionAlreadyExists.Error())
+	t.EqualError(err, fmt.Sprintf("repo.transaction: %v", model.ErrorTransactionAlreadyExists))
 }
 
 func (t *transactionRepoTestSuite) TestCancelTransaction() {

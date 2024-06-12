@@ -5,7 +5,6 @@ import (
 
 	"github.com/golang-migrate/migrate"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 
 	"github.com/ttagiyeva/entain/internal/config"
 	"github.com/ttagiyeva/entain/internal/database"
@@ -43,8 +42,8 @@ func main() {
 			),
 
 			fx.Annotate(
-				func(logger *zap.SugaredLogger, postgres *database.Postgres) transaction.Repository {
-					return repository.New(logger, postgres.Connection)
+				func(postgres *database.Postgres) transaction.Repository {
+					return repository.New(postgres.Connection)
 				},
 
 				fx.As(new(transaction.Repository)),

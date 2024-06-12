@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -74,28 +75,26 @@ func (h *Handler) Process(ctx echo.Context) error {
 
 	err = h.usecase.Process(c, transaction)
 	if err != nil {
-		return ctx.JSON(getStatusCode(err), model.Error{
-			Code:    getStatusCode(err),
-			Message: err.Error(),
-		})
+		h.log.Errorf("handler.transaction: %v body = %v", err, transaction)
+
+		resp := getStatusCode(err)
+
+		return ctx.JSON(resp.Code, resp)
 	}
 
 	return ctx.NoContent(http.StatusOK)
 }
 
-func getStatusCode(err error) int {
-	if err == nil {
-		return http.StatusOK
+func getStatusCode(err error) model.Error {
+	if errors.Is(err, model.ErrorNotFound) {
+		return model.Error{Code: http.StatusNotFound, Message: model.ErrorNotFound.Error()}
 	}
+	if errors.Is(err, model.ErrorInsufficientBalance) {
+		return model.Error{Code: http.StatusForbidden, Message: model.ErrorInsufficientBalance.Error()}
+	}
+	if errors.Is(err, model.ErrorTransactionAlreadyExists) {
+		return model.Error{Code: http.StatusConflict, Message: model.ErrorTransactionAlreadyExists.Error()}
+	}
+	return model.Error{Code: http.StatusInternalServerError, Message: model.ErrorInternalServer.Error()}
 
-	switch err {
-	case model.ErrorNotFound:
-		return http.StatusNotFound
-	case model.ErrorInsufficientBalance:
-		return http.StatusForbidden
-	case model.ErrorTransactionAlreadyExists:
-		return http.StatusConflict
-	default:
-		return http.StatusInternalServerError
-	}
 }

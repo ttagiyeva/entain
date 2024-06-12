@@ -25,7 +25,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 		SourceType    string
 		buildStubs    func(trUsecase *mocks.MockUsecase)
 		expectedCode  int
-		expectedError *model.Error
+		expectedError model.Error
 	}{
 		{
 			name: "OK",
@@ -36,52 +36,47 @@ func TestTransactionHandler_Process(t *testing.T) {
 			expectedCode: http.StatusOK,
 		},
 		{
-			name:         "Invalid request body",
-			body:         []byte(`{"transactionId":"1","state":"win","amount":"1"}`),
-			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
-			expectedCode: http.StatusBadRequest,
-			expectedError: &model.Error{
+			name:       "Invalid request body",
+			body:       []byte(`{"transactionId":"1","state":"win","amount":"1"}`),
+			buildStubs: func(trUsecase *mocks.MockUsecase) {},
+			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
 				Message: model.ErrorBadRequest,
 			},
 		},
 		{
-			name:         "Invalid source type",
-			body:         []byte(`{"transactionId":"1","state":"win","amount":1}`),
-			SourceType:   "test",
-			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
-			expectedCode: http.StatusBadRequest,
-			expectedError: &model.Error{
+			name:       "Invalid source type",
+			body:       []byte(`{"transactionId":"1","state":"win","amount":1}`),
+			SourceType: "test",
+			buildStubs: func(trUsecase *mocks.MockUsecase) {},
+			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
 				Message: model.ErrorInvalidSourceType,
 			},
 		},
 		{
-			name:         "Invalid state",
-			body:         []byte(`{"transactionId":"1","state":"won","amount":1}`),
-			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
-			expectedCode: http.StatusBadRequest,
-			expectedError: &model.Error{
+			name:       "Invalid state",
+			body:       []byte(`{"transactionId":"1","state":"won","amount":1}`),
+			buildStubs: func(trUsecase *mocks.MockUsecase) {},
+			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
 				Message: model.ErrorInvalidState,
 			},
 		},
 		{
-			name:         "Invalid amount",
-			body:         []byte(`{"transactionId":"1","state":"win","amount":-1}`),
-			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
-			expectedCode: http.StatusBadRequest,
-			expectedError: &model.Error{
+			name:       "Invalid amount",
+			body:       []byte(`{"transactionId":"1","state":"win","amount":-1}`),
+			buildStubs: func(trUsecase *mocks.MockUsecase) {},
+			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
 				Message: model.ErrorInvalidAmount,
 			},
 		},
 		{
-			name:         "Invalid transactionId",
-			body:         []byte(`{"state":"win","amount":1}`),
-			buildStubs:   func(trUsecase *mocks.MockUsecase) {},
-			expectedCode: http.StatusBadRequest,
-			expectedError: &model.Error{
+			name:       "Invalid transactionId",
+			body:       []byte(`{"state":"win","amount":1}`),
+			buildStubs: func(trUsecase *mocks.MockUsecase) {},
+			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
 				Message: model.ErrorInvalidTransactionId,
 			},
@@ -92,11 +87,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorTransactionAlreadyExists)
 			},
-			expectedCode: getStatusCode(model.ErrorTransactionAlreadyExists),
-			expectedError: &model.Error{
-				Code:    getStatusCode(model.ErrorTransactionAlreadyExists),
-				Message: model.ErrorTransactionAlreadyExists.Error(),
-			},
+			expectedError: getStatusCode(model.ErrorTransactionAlreadyExists),
 		},
 		{
 			name: "Insufficient Balance error",
@@ -104,11 +95,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorInsufficientBalance)
 			},
-			expectedCode: getStatusCode(model.ErrorInsufficientBalance),
-			expectedError: &model.Error{
-				Code:    getStatusCode(model.ErrorInsufficientBalance),
-				Message: model.ErrorInsufficientBalance.Error(),
-			},
+			expectedError: getStatusCode(model.ErrorInsufficientBalance),
 		},
 		{
 			name: "User not found",
@@ -116,11 +103,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorNotFound)
 			},
-			expectedCode: getStatusCode(model.ErrorNotFound),
-			expectedError: &model.Error{
-				Code:    getStatusCode(model.ErrorNotFound),
-				Message: model.ErrorNotFound.Error(),
-			},
+			expectedError: getStatusCode(model.ErrorNotFound),
 		},
 		{
 			name: "Internal server error",
@@ -128,11 +111,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(fmt.Errorf("unexpected error"))
 			},
-			expectedCode: http.StatusInternalServerError,
-			expectedError: &model.Error{
-				Code:    http.StatusInternalServerError,
-				Message: "unexpected error",
-			},
+			expectedError: getStatusCode(fmt.Errorf("unexpected error")),
 		},
 	}
 
@@ -161,9 +140,11 @@ func TestTransactionHandler_Process(t *testing.T) {
 
 			handler.Process(c)
 
-			require.Equal(t, tc.expectedCode, rec.Code)
+			if tc.expectedCode != 0 {
+				require.Equal(t, tc.expectedCode, rec.Code)
+			} else {
+				require.Equal(t, tc.expectedError.Code, rec.Code)
 
-			if tc.expectedError != nil {
 				expectedErr, err := json.Marshal(tc.expectedError)
 				require.NoError(t, err)
 

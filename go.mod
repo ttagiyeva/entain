@@ -3,12 +3,12 @@ module github.com/ttagiyeva/entain
 go 1.21
 
 require (
-	github.com/alexliesenfeld/health v0.8.0
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/bxcodec/faker/v3 v3.8.1
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/golang/mock v1.6.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/lib/pq v1.10.9

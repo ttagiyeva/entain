@@ -117,7 +117,7 @@ func (u *userRepoTestSuite) TestCreateTransaction() {
 	u.Equal("00000000-0000-0000-0000-000000000001", us.ID)
 
 	us, err = u.repo.GetUser(ctx, faker.UUIDHyphenated())
-	u.Equal(err, model.ErrorNotFound)
+	u.EqualError(err, fmt.Sprintf("repo.user: %v", model.ErrorNotFound))
 	u.Nil(us)
 }
 
@@ -137,7 +137,7 @@ func (u *userRepoTestSuite) TestUpdateUserBalance() {
 
 	user.Balance = -100
 	err = u.repo.UpdateUserBalance(tx, ctx, user)
-	u.EqualError(err, model.ErrorInsufficientBalance.Error())
+	u.EqualError(err, fmt.Sprintf("repo.user: %v", model.ErrorInsufficientBalance))
 
 	tx = u.db.Connection.MustBegin().Tx
 	user.ID = faker.UUIDHyphenated()

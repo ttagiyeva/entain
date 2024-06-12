@@ -4,24 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	"go.uber.org/zap"
 
 	"github.com/ttagiyeva/entain/internal/model"
 )
 
 // Transaction is a structure which manages transaction repository.
 type Transaction struct {
-	log  *zap.SugaredLogger
 	conn *sqlx.DB
 }
 
 // New returns a new Transaction object.
-func New(log *zap.SugaredLogger, conn *sqlx.DB) *Transaction {
+func New(conn *sqlx.DB) *Transaction {
 	return &Transaction{
-		log:  log,
 		conn: conn,
 	}
 }
@@ -50,16 +48,14 @@ func (t *Transaction) CreateTransaction(tx *sql.Tx, ctx context.Context, transac
 	).Scan(&transaction.ID)
 
 	if err != nil {
-		t.log.Errorf("error while creating transaction: %v", err)
-
 		var pqError *pq.Error
 		if errors.As(err, &pqError) {
 			if pqError.Constraint == "unique_transaction_id" {
-				return model.ErrorTransactionAlreadyExists
+				return fmt.Errorf("repo.transaction: %w", model.ErrorTransactionAlreadyExists)
 			}
 		}
 
-		return model.ErrorInternalServer
+		return fmt.Errorf("repo.transaction: %w", err)
 	}
 
 	return nil
@@ -75,7 +71,7 @@ func (t *Transaction) CancelTransaction(ctx context.Context, id string) error {
 	`
 	tx, err := t.conn.Begin()
 	if err != nil {
-		return model.ErrorInternalServer
+		return fmt.Errorf("repo.transaction: %w", err)
 	}
 
 	_, err = tx.ExecContext(
@@ -85,17 +81,17 @@ func (t *Transaction) CancelTransaction(ctx context.Context, id string) error {
 	)
 
 	if err != nil {
-		err = tx.Rollback()
-		if err != nil {
-			return model.ErrorInternalServer
+		errTx := tx.Rollback()
+		if errTx != nil {
+			return fmt.Errorf("repo.transaction: %w %w", errTx, err)
 		}
 
-		return model.ErrorInternalServer
+		return fmt.Errorf("repo.transaction: %w", err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return model.ErrorInternalServer
+		return fmt.Errorf("repo.transaction: %w", err)
 	}
 
 	return nil
@@ -121,9 +117,7 @@ func (t *Transaction) CheckExistance(ctx context.Context, id string) (bool, erro
 	)
 
 	if err != nil {
-		t.log.Errorf("error while checking transaction existance: %v", err)
-
-		return false, model.ErrorInternalServer
+		return false, fmt.Errorf("repo.transaction: %w", err)
 	}
 
 	return exists, nil
@@ -152,8 +146,7 @@ func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context
 		limit,
 	)
 	if err != nil {
-		t.log.Errorf("error while getting latest odd and uncancelled transactions: %v", err)
-		return nil, model.ErrorInternalServer
+		return nil, fmt.Errorf("repo.transaction: %w", err)
 	}
 
 	defer rows.Close()
@@ -173,7 +166,7 @@ func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context
 			&transaction.Cancelled,
 		)
 		if err != nil {
-			return nil, model.ErrorInternalServer
+			return nil, fmt.Errorf("repo.transaction: %w", err)
 		}
 
 		transactions = append(transactions, transaction)

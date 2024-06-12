@@ -15,13 +15,14 @@ func NewZapLogger(lc fx.Lifecycle, conf *config.Config) *zap.SugaredLogger {
 		Encoding:    conf.Logger.Encoding,
 		OutputPaths: []string{"stdout"},
 		EncoderConfig: zapcore.EncoderConfig{
-			LevelKey:    "levelKey",
-			MessageKey:  "messageKey",
-			FunctionKey: "functionKey",
+			LevelKey:    "level",
+			MessageKey:  "message",
+			FunctionKey: "function",
+			TimeKey:     "time",
 			EncodeLevel: zapcore.LowercaseLevelEncoder,
+			EncodeTime:  zapcore.ISO8601TimeEncoder,
 		},
 		ErrorOutputPaths: []string{"stderr"},
-		InitialFields:    map[string]interface{}{"app": "ENTAIN"},
 	}
 
 	cfg.Level.UnmarshalText([]byte(conf.Logger.Level))
