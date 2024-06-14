@@ -12,6 +12,7 @@ services:
       - "8080:8080"
     depends_on:
       - postgresql
+    restart: on-failure  
   postgresql:
     image: postgres
     container_name: postgresql
