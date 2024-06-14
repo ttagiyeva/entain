@@ -51,11 +51,11 @@ func (t *Transaction) CreateTransaction(tx *sql.Tx, ctx context.Context, transac
 		var pqError *pq.Error
 		if errors.As(err, &pqError) {
 			if pqError.Constraint == "unique_transaction_id" {
-				return fmt.Errorf("repo.transaction.CreateTransaction: %w", model.ErrorTransactionAlreadyExists)
+				return fmt.Errorf("failed to insert transaction because of unique constraint: %w", model.ErrorTransactionAlreadyExists)
 			}
 		}
 
-		return fmt.Errorf("repo.transaction.CreateTransaction: %w", err)
+		return fmt.Errorf("failed to execute insert transaction query: %w", err)
 	}
 
 	return nil
@@ -71,7 +71,7 @@ func (t *Transaction) CancelTransaction(ctx context.Context, id string) error {
 	`
 	tx, err := t.conn.Begin()
 	if err != nil {
-		return fmt.Errorf("repo.transaction.CancelTransaction.Begin: %w", err)
+		return fmt.Errorf("failed to start a db tx: %w", err)
 	}
 
 	_, err = tx.ExecContext(
@@ -83,15 +83,15 @@ func (t *Transaction) CancelTransaction(ctx context.Context, id string) error {
 	if err != nil {
 		errTx := tx.Rollback()
 		if errTx != nil {
-			return fmt.Errorf("repo.transaction.CancelTransaction.Rollback: %w %w", errTx, err)
+			return fmt.Errorf("failed to rollback the db tx: %w %w", errTx, err)
 		}
 
-		return fmt.Errorf("repo.transaction.CancelTransaction: %w", err)
+		return fmt.Errorf("failed to execute update transaction query: %w", err)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("repo.transaction.CancelTransaction.Commit: %w", err)
+		return fmt.Errorf("failed to commit the db tx: %w", err)
 	}
 
 	return nil
@@ -117,7 +117,7 @@ func (t *Transaction) CheckExistance(ctx context.Context, id string) (bool, erro
 	)
 
 	if err != nil {
-		return false, fmt.Errorf("repo.transaction.CheckExistance: %w", err)
+		return false, fmt.Errorf("failed to execute check transaction existance query: %w", err)
 	}
 
 	return exists, nil
@@ -146,7 +146,7 @@ func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context
 		limit,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("repo.transaction.GetLatestTransactions: %w", err)
+		return nil, fmt.Errorf("failed to execute get latest odd and uncancelled transactions query: %w", err)
 	}
 
 	defer rows.Close()
@@ -166,7 +166,7 @@ func (t *Transaction) GetLatestOddAndUncancelledTransactions(ctx context.Context
 			&transaction.Cancelled,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("repo.transaction.GetLatestTransactions.Scan: %w", err)
+			return nil, fmt.Errorf("failed to scan transaction row: %w", err)
 		}
 
 		transactions = append(transactions, transaction)

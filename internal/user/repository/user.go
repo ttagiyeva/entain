@@ -45,10 +45,10 @@ func (a *User) GetUser(ctx context.Context, id string) (*model.UserDao, error) {
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("repo.user.GetUser: %w", model.ErrorNotFound)
+			return nil, fmt.Errorf("failed because user not found: %w", model.ErrorUserNotFound)
 		}
 
-		return nil, fmt.Errorf("repo.user.GetUser: %w", err)
+		return nil, fmt.Errorf("failed to execute get user query: %w", err)
 	}
 
 	return user, nil
@@ -73,11 +73,11 @@ func (a *User) UpdateUserBalance(tx *sql.Tx, ctx context.Context, user *model.Us
 		var pqError *pq.Error
 		if errors.As(err, &pqError) {
 			if pqError.Constraint == "users_balance_check" {
-				return fmt.Errorf("repo.user.UpdateUserBalance: %w", model.ErrorInsufficientBalance)
+				return fmt.Errorf("failed to update user balance because of balance check constraint: %w", model.ErrorInsufficientBalance)
 			}
 		}
 
-		return fmt.Errorf("repo.user.UpdateUserBalance: %w", err)
+		return fmt.Errorf("failed to execute update user balance query: %w", err)
 	}
 
 	return nil

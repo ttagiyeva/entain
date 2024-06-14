@@ -3,9 +3,6 @@ package repository_test
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,10 +13,10 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 
-	"github.com/ttagiyeva/entain/internal/config"
 	"github.com/ttagiyeva/entain/internal/database"
 	"github.com/ttagiyeva/entain/internal/model"
 	"github.com/ttagiyeva/entain/internal/transaction/repository"
+	"github.com/ttagiyeva/entain/internal/util"
 )
 
 type transactionRepoTestSuite struct {
@@ -27,6 +24,7 @@ type transactionRepoTestSuite struct {
 	testcontainers.Container
 	db   *database.Postgres
 	repo *repository.Transaction
+	ctx  context.Context
 }
 
 func TestTransactionRepoTestSuite(t *testing.T) {
@@ -34,68 +32,8 @@ func TestTransactionRepoTestSuite(t *testing.T) {
 }
 
 func (t *transactionRepoTestSuite) SetupSuite() {
-	ctx := context.Background()
-
-	cfg := config.Config{
-		DB: config.DB{
-			Host:     "localhost",
-			Port:     5432,
-			User:     "root",
-			Password: "root",
-			Name:     "postgres",
-		},
-	}
-
-	req := testcontainers.ContainerRequest{
-		Image:        "postgres:alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     cfg.DB.User,
-			"POSTGRES_PASSWORD": cfg.DB.Password,
-			"POSTGRES_DB":       cfg.DB.Name,
-		},
-	}
-
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	t.Require().NoError(err)
-
-	endpoint, err := container.Endpoint(ctx, "")
-	t.Require().NoError(err)
-
-	portStr := strings.Split(endpoint, ":")[1]
-
-	port, err := strconv.Atoi(portStr)
-	t.Require().NoError(err)
-
-	cfg.DB.Port = uint16(port)
-
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("Recovered in database connection", r)
-		}
-	}()
-
-	db := database.NewPostgres()
-
-	// 10 iterations to wait for the database to be ready.
-	for i := 0; i < 10; i++ {
-		err = db.Connect(ctx, &cfg)
-		if err != nil {
-			time.Sleep(time.Millisecond * 500)
-
-			continue
-		}
-
-		t.Require().NoError(err)
-
-		break
-	}
-
-	t.db = db
-
+	t.ctx = context.Background()
+	t.db = util.CreateTestContainer(t.ctx, &t.Suite)
 	t.repo = repository.New(t.db.Connection)
 }
 
@@ -110,8 +48,6 @@ func (t *transactionRepoTestSuite) TearDownTest() {
 }
 
 func (t *transactionRepoTestSuite) TestCreateTransaction() {
-	ctx := context.Background()
-
 	transaction := &model.TransactionDao{
 		UserID:        "00000000-0000-0000-0000-000000000001",
 		TransactionID: faker.UUIDHyphenated(),
@@ -125,15 +61,14 @@ func (t *transactionRepoTestSuite) TestCreateTransaction() {
 	tx := t.db.Connection.MustBegin().Tx
 	defer tx.Commit()
 
-	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
+	t.NoError(t.repo.CreateTransaction(tx, t.ctx, transaction))
 	t.NotEqual(0, transaction.ID)
 
-	err := t.repo.CreateTransaction(tx, ctx, transaction)
-	t.EqualError(err, fmt.Sprintf("repo.transaction.CreateTransaction: %v", model.ErrorTransactionAlreadyExists))
+	err := t.repo.CreateTransaction(tx, t.ctx, transaction)
+	t.Equal(true, errors.Is(err, model.ErrorTransactionAlreadyExists))
 }
 
 func (t *transactionRepoTestSuite) TestCancelTransaction() {
-	ctx := context.Background()
 	transaction := &model.TransactionDao{
 		UserID:        "00000000-0000-0000-0000-000000000001",
 		TransactionID: faker.UUIDHyphenated(),
@@ -146,20 +81,19 @@ func (t *transactionRepoTestSuite) TestCancelTransaction() {
 
 	tx := t.db.Connection.MustBegin().Tx
 
-	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
+	t.NoError(t.repo.CreateTransaction(tx, t.ctx, transaction))
 	t.NotEqual(0, transaction.ID)
 
 	err := tx.Commit()
 	t.NoError(err)
 
-	t.NoError(t.repo.CancelTransaction(ctx, transaction.ID))
+	t.NoError(t.repo.CancelTransaction(t.ctx, transaction.ID))
 
-	err = t.repo.CancelTransaction(ctx, faker.UUIDHyphenated())
+	err = t.repo.CancelTransaction(t.ctx, faker.UUIDHyphenated())
 	t.Nil(err)
 }
 
 func (t *transactionRepoTestSuite) TestCheckExistance() {
-	ctx := context.Background()
 	transaction := &model.TransactionDao{
 		UserID:        "00000000-0000-0000-0000-000000000001",
 		TransactionID: faker.UUIDHyphenated(),
@@ -172,23 +106,22 @@ func (t *transactionRepoTestSuite) TestCheckExistance() {
 
 	tx := t.db.Connection.MustBegin().Tx
 
-	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
+	t.NoError(t.repo.CreateTransaction(tx, t.ctx, transaction))
 	t.NotEqual(0, transaction.ID)
 
 	err := tx.Commit()
 	t.NoError(err)
 
-	ok, err := t.repo.CheckExistance(ctx, transaction.TransactionID)
+	ok, err := t.repo.CheckExistance(t.ctx, transaction.TransactionID)
 	t.Equal(true, ok)
 	t.NoError(err)
 
-	ok, err = t.repo.CheckExistance(ctx, faker.UUIDHyphenated())
+	ok, err = t.repo.CheckExistance(t.ctx, faker.UUIDHyphenated())
 	t.Equal(false, ok)
 	t.NoError(err)
 }
 
 func (t *transactionRepoTestSuite) TestGetLatestOddAndUncancelledTransactions() {
-	ctx := context.Background()
 	transaction := &model.TransactionDao{
 		UserID:        "00000000-0000-0000-0000-000000000001",
 		TransactionID: faker.UUIDHyphenated(),
@@ -201,13 +134,13 @@ func (t *transactionRepoTestSuite) TestGetLatestOddAndUncancelledTransactions() 
 
 	tx := t.db.Connection.MustBegin().Tx
 
-	t.NoError(t.repo.CreateTransaction(tx, ctx, transaction))
+	t.NoError(t.repo.CreateTransaction(tx, t.ctx, transaction))
 	t.NotEqual(0, transaction.ID)
 
 	err := tx.Commit()
 	t.NoError(err)
 
-	transactions, err := t.repo.GetLatestOddAndUncancelledTransactions(ctx, 10)
+	transactions, err := t.repo.GetLatestOddAndUncancelledTransactions(t.ctx, 10)
 	t.NoError(err)
 	t.NotEmpty(transactions)
 	t.Equal(1, len(transactions))

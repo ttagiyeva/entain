@@ -3,11 +3,11 @@ package model
 import "time"
 
 type Transaction struct {
-	TransactionID string  `json:"transactionId"`
-	State         string  `json:"state"`
-	Amount        float32 `json:"amount"`
-	UserID        string
-	SourceType    string
+	TransactionID string  `json:"transactionId" validate:"required"`
+	State         string  `json:"state" validate:"required,oneof=win lost"`
+	Amount        float32 `json:"amount" validate:"required,gt=0"`
+	UserID        string  `validate:"required"`
+	SourceType    string  `validate:"required,oneof=game server payment"`
 }
 
 // TransactionDao is the domain object for transactions table.

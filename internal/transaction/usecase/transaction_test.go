@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"sync"
 	"testing"
@@ -25,6 +24,7 @@ func TestProcess(t *testing.T) {
 	}
 
 	tx := &sql.Tx{}
+	dummyErr := errors.New("dummy error")
 
 	tr := &model.Transaction{
 		UserID:        user.ID,
@@ -58,10 +58,10 @@ func TestProcess(t *testing.T) {
 			name: "CheckExistance error",
 			body: tr,
 			buildStubs: func(trRepo *mocks.MockRepository, userRepo *userMocks.MockUserRepository, db *mocks.MockDatabase) {
-				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, errors.New("dummy error"))
+				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, dummyErr)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction.Process.CheckExistance: dummy error")
+				require.Equal(t, true, errors.Is(err, dummyErr))
 			},
 		},
 		{
@@ -71,7 +71,7 @@ func TestProcess(t *testing.T) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(true, nil)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, fmt.Sprintf("usecase.transaction.Process.Exist: %v", model.ErrorTransactionAlreadyExists))
+				require.Equal(t, true, errors.Is(err, model.ErrorTransactionAlreadyExists))
 			},
 		},
 		{
@@ -79,11 +79,11 @@ func TestProcess(t *testing.T) {
 			body: tr,
 			buildStubs: func(trRepo *mocks.MockRepository, userRepo *userMocks.MockUserRepository, db *mocks.MockDatabase) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil).Times(1)
-				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(nil, model.ErrorNotFound)
+				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(nil, model.ErrorUserNotFound)
 
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, fmt.Sprintf("usecase.transaction.Process.GetUser: %v", model.ErrorNotFound))
+				require.Equal(t, true, errors.Is(err, model.ErrorUserNotFound))
 			},
 		},
 		{
@@ -97,7 +97,7 @@ func TestProcess(t *testing.T) {
 				}, nil)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, fmt.Sprintf("usecase.transaction.Process.Balance: %v", model.ErrorInsufficientBalance))
+				require.Equal(t, true, errors.Is(err, model.ErrorInsufficientBalance))
 			},
 		},
 		{
@@ -106,70 +106,70 @@ func TestProcess(t *testing.T) {
 			buildStubs: func(trRepo *mocks.MockRepository, userRepo *userMocks.MockUserRepository, db *mocks.MockDatabase) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(user, nil)
-				db.EXPECT().BeginTx(gomock.Any()).Return(nil, errors.New("dummy error"))
+				db.EXPECT().BeginTx(gomock.Any()).Return(nil, dummyErr)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction.Process.BeginTx: dummy error")
+				require.Equal(t, true, errors.Is(err, dummyErr))
 			},
 		},
 		{
-			name: "UpdateUserBalance server",
+			name: "UpdateUserBalance error",
 			body: tr,
 			buildStubs: func(trRepo *mocks.MockRepository, userRepo *userMocks.MockUserRepository, db *mocks.MockDatabase) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(user, nil)
 				db.EXPECT().BeginTx(gomock.Any()).Return(tx, nil).Times(1)
-				userRepo.EXPECT().UpdateUserBalance(tx, gomock.Any(), user).Return(errors.New("dummy error"))
+				userRepo.EXPECT().UpdateUserBalance(tx, gomock.Any(), user).Return(dummyErr)
 				db.EXPECT().Rollback(tx).Return(nil).Times(1)
 
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction.Process.UpdateUserBalance: dummy error")
+				require.Equal(t, true, errors.Is(err, dummyErr))
 			},
 		},
 		{
-			name: "Rollback error",
+			name: "Rollback of UpdateUserBalance error",
 			body: tr,
 			buildStubs: func(trRepo *mocks.MockRepository, userRepo *userMocks.MockUserRepository, db *mocks.MockDatabase) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(user, nil)
 				db.EXPECT().BeginTx(gomock.Any()).Return(tx, nil).Times(1)
-				userRepo.EXPECT().UpdateUserBalance(tx, gomock.Any(), user).Return(errors.New("user error"))
-				db.EXPECT().Rollback(tx).Return(errors.New("rollback error"))
+				userRepo.EXPECT().UpdateUserBalance(tx, gomock.Any(), user).Return(dummyErr)
+				db.EXPECT().Rollback(tx).Return(errors.New("rollback error")).Times(1)
 
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction.Process.Rollback: rollback error user error")
+				require.Equal(t, true, errors.Is(err, dummyErr))
 			},
 		},
 		{
-			name: "Internal server",
+			name: "CreateTransaction error",
 			body: tr,
 			buildStubs: func(trRepo *mocks.MockRepository, userRepo *userMocks.MockUserRepository, db *mocks.MockDatabase) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(user, nil)
 				db.EXPECT().BeginTx(gomock.Any()).Return(tx, nil).Times(1)
 				userRepo.EXPECT().UpdateUserBalance(tx, gomock.Any(), user).Return(nil).Times(1)
-				trRepo.EXPECT().CreateTransaction(tx, gomock.Any(), gomock.Any()).Return(errors.New("dummy error"))
+				trRepo.EXPECT().CreateTransaction(tx, gomock.Any(), gomock.Any()).Return(dummyErr)
 				db.EXPECT().Rollback(tx).Return(nil).Times(1)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction.Process.CreateTransaction: dummy error")
+				require.Equal(t, true, errors.Is(err, dummyErr))
 			},
 		},
 		{
-			name: "Rollback server",
+			name: "Rollback of CreateTransaction error",
 			body: tr,
 			buildStubs: func(trRepo *mocks.MockRepository, userRepo *userMocks.MockUserRepository, db *mocks.MockDatabase) {
 				trRepo.EXPECT().CheckExistance(gomock.Any(), tr.TransactionID).Return(false, nil)
 				userRepo.EXPECT().GetUser(gomock.Any(), tr.UserID).Return(user, nil)
 				db.EXPECT().BeginTx(gomock.Any()).Return(tx, nil).Times(1)
 				userRepo.EXPECT().UpdateUserBalance(tx, gomock.Any(), user).Return(nil).Times(1)
-				trRepo.EXPECT().CreateTransaction(tx, gomock.Any(), gomock.Any()).Return(model.ErrorInternalServer)
+				trRepo.EXPECT().CreateTransaction(tx, gomock.Any(), gomock.Any()).Return(dummyErr)
 				db.EXPECT().Rollback(tx).Return(errors.New("rollback error"))
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction.Process.Rollback: rollback error internal Server Error")
+				require.Equal(t, true, errors.Is(err, dummyErr))
 			},
 		},
 		{
@@ -181,10 +181,10 @@ func TestProcess(t *testing.T) {
 				db.EXPECT().BeginTx(gomock.Any()).Return(tx, nil).Times(1)
 				userRepo.EXPECT().UpdateUserBalance(tx, gomock.Any(), user).Return(nil).Times(1)
 				trRepo.EXPECT().CreateTransaction(tx, gomock.Any(), gomock.Any()).Return(nil).Times(1)
-				db.EXPECT().Commit(tx).Return(errors.New("dummy error"))
+				db.EXPECT().Commit(tx).Return(dummyErr)
 			},
 			checkResponse: func(err error) {
-				require.EqualError(t, err, "usecase.transaction.Process.Commit: dummy error")
+				require.Equal(t, true, errors.Is(err, dummyErr))
 			},
 		},
 	}

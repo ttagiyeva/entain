@@ -13,7 +13,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ttagiyeva/entain/internal/constants"
 	"github.com/ttagiyeva/entain/internal/model"
 	"github.com/ttagiyeva/entain/internal/transaction/mocks"
 )
@@ -52,7 +51,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {},
 			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
-				Message: model.ErrorInvalidSourceType,
+				Message: "Value of the SourceType field must be one of 'game server payment'",
 			},
 		},
 		{
@@ -61,7 +60,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {},
 			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
-				Message: model.ErrorInvalidState,
+				Message: "Value of the State field must be one of 'win lost'",
 			},
 		},
 		{
@@ -70,7 +69,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {},
 			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
-				Message: model.ErrorInvalidAmount,
+				Message: "Value of the Amount field must be greater than 0",
 			},
 		},
 		{
@@ -79,7 +78,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {},
 			expectedError: model.Error{
 				Code:    http.StatusBadRequest,
-				Message: model.ErrorInvalidTransactionId,
+				Message: "TransactionID field is required",
 			},
 		},
 		{
@@ -88,7 +87,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorTransactionAlreadyExists)
 			},
-			expectedError: getStatusCode(model.ErrorTransactionAlreadyExists),
+			expectedError: getError(model.ErrorTransactionAlreadyExists),
 		},
 		{
 			name: "Insufficient Balance error",
@@ -96,15 +95,15 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorInsufficientBalance)
 			},
-			expectedError: getStatusCode(model.ErrorInsufficientBalance),
+			expectedError: getError(model.ErrorInsufficientBalance),
 		},
 		{
 			name: "User not found",
 			body: []byte(`{"transactionId":"1","state":"win","amount":1}`),
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
-				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorNotFound)
+				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(model.ErrorUserNotFound)
 			},
-			expectedError: getStatusCode(model.ErrorNotFound),
+			expectedError: getError(model.ErrorUserNotFound),
 		},
 		{
 			name: "Internal server error",
@@ -112,7 +111,7 @@ func TestTransactionHandler_Process(t *testing.T) {
 			buildStubs: func(trUsecase *mocks.MockUsecase) {
 				trUsecase.EXPECT().Process(gomock.Any(), gomock.Any()).Return(fmt.Errorf("unexpected error"))
 			},
-			expectedError: getStatusCode(fmt.Errorf("unexpected error")),
+			expectedError: getError(fmt.Errorf("unexpected error")),
 		},
 	}
 
@@ -131,13 +130,15 @@ func TestTransactionHandler_Process(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/users/1/transactions", bytes.NewReader(tc.body))
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			if tc.SourceType == "" {
-				req.Header.Set(constants.SourceType, "game")
+				req.Header.Set(SourceType, "game")
 			} else {
-				req.Header.Set(constants.SourceType, tc.SourceType)
+				req.Header.Set(SourceType, tc.SourceType)
 			}
 
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
+			c.SetParamNames("id")
+			c.SetParamValues("1")
 
 			err := handler.Process(c)
 			require.NoError(t, err)

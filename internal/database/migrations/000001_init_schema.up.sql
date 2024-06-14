@@ -14,7 +14,7 @@ BEGIN;
 	CREATE TABLE IF NOT EXISTS
 		transactions (
 			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			user_id UUID REFERENCES users (id),
+			user_id UUID REFERENCES users (id) ON DELETE CASCADE,
 			transaction_id VARCHAR(100) NOT NULL,
 			source_type source_type NOT NULL,
 			state state NOT NULL,

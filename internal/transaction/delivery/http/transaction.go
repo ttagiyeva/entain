@@ -2,15 +2,20 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
 
-	"github.com/ttagiyeva/entain/internal/constants"
 	"github.com/ttagiyeva/entain/internal/model"
 	"github.com/ttagiyeva/entain/internal/transaction"
+)
+
+const (
+	SourceType = "Source-Type"
 )
 
 // Handler is a structure which manages http handlers.
@@ -38,47 +43,23 @@ func (h *Handler) Process(ctx echo.Context) error {
 		})
 	}
 
-	sourceType := ctx.Request().Header.Get(constants.SourceType)
-	_, ok := constants.SourceTypes[sourceType]
-	if !ok {
-		return ctx.JSON(http.StatusBadRequest, model.Error{
-			Code:    http.StatusBadRequest,
-			Message: model.ErrorInvalidSourceType,
-		})
-	}
-
-	transaction.SourceType = sourceType
 	transaction.UserID = ctx.Param("id")
+	transaction.SourceType = ctx.Request().Header.Get(SourceType)
 
-	if strings.Trim(transaction.TransactionID, " ") == "" {
-		return ctx.JSON(http.StatusBadRequest, model.Error{
-			Code:    http.StatusBadRequest,
-			Message: model.ErrorInvalidTransactionId,
-		})
-	}
+	sv := validator.New()
 
-	if transaction.Amount <= 0 {
-		return ctx.JSON(http.StatusBadRequest, model.Error{
-			Code:    http.StatusBadRequest,
-			Message: model.ErrorInvalidAmount,
-		})
-	}
-
-	_, ok = constants.States[transaction.State]
-	if !ok {
-		return ctx.JSON(http.StatusBadRequest, model.Error{
-			Code:    http.StatusBadRequest,
-			Message: model.ErrorInvalidState,
-		})
+	err = sv.Struct(transaction)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, h.validatorError(err))
 	}
 
 	c := ctx.Request().Context()
 
 	err = h.usecase.Process(c, transaction)
 	if err != nil {
-		h.log.With("body", transaction).Error("processing transaction failed", "error", err)
+		h.log.With("body", transaction).Error("failed to process transaction", "error", err)
 
-		resp := getStatusCode(err)
+		resp := getError(err)
 
 		return ctx.JSON(resp.Code, resp)
 	}
@@ -86,16 +67,42 @@ func (h *Handler) Process(ctx echo.Context) error {
 	return ctx.NoContent(http.StatusOK)
 }
 
-func getStatusCode(err error) model.Error {
-	if errors.Is(err, model.ErrorNotFound) {
-		return model.Error{Code: http.StatusNotFound, Message: model.ErrorNotFound.Error()}
-	}
-	if errors.Is(err, model.ErrorInsufficientBalance) {
-		return model.Error{Code: http.StatusForbidden, Message: model.ErrorInsufficientBalance.Error()}
-	}
-	if errors.Is(err, model.ErrorTransactionAlreadyExists) {
-		return model.Error{Code: http.StatusConflict, Message: model.ErrorTransactionAlreadyExists.Error()}
+func (h *Handler) validatorError(err error) model.Error {
+	if _, ok := err.(*validator.InvalidValidationError); ok {
+		h.log.Error("failed to assert validation error", "error", err)
+
+		return model.Error{Code: http.StatusInternalServerError, Message: "Internal Server Error"}
 	}
 
-	return model.Error{Code: http.StatusInternalServerError, Message: model.ErrorInternalServer.Error()}
+	var sb strings.Builder
+
+	for i, err := range err.(validator.ValidationErrors) {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+
+		switch err.Tag() {
+		case "required":
+			sb.WriteString(fmt.Sprintf("%s field is required", err.Field()))
+		case "oneof":
+			sb.WriteString(fmt.Sprintf("Value of the %s field must be one of '%s'", err.Field(), err.Param()))
+		case "gt":
+			sb.WriteString(fmt.Sprintf("Value of the %s field must be greater than %s", err.Field(), err.Param()))
+		}
+	}
+
+	return model.Error{Code: http.StatusBadRequest, Message: sb.String()}
+}
+
+func getError(err error) model.Error {
+	switch {
+	case errors.Is(err, model.ErrorUserNotFound):
+		return model.Error{Code: http.StatusNotFound, Message: model.ErrorUserNotFound.Error()}
+	case errors.Is(err, model.ErrorInsufficientBalance):
+		return model.Error{Code: http.StatusForbidden, Message: model.ErrorInsufficientBalance.Error()}
+	case errors.Is(err, model.ErrorTransactionAlreadyExists):
+		return model.Error{Code: http.StatusConflict, Message: model.ErrorTransactionAlreadyExists.Error()}
+	default:
+		return model.Error{Code: http.StatusInternalServerError, Message: model.ErrorInternalServerError.Error()}
+	}
 }
